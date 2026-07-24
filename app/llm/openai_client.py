@@ -14,4 +14,7 @@ class OpenAIClient(BaseLLMClient):
         # )
         # return response.output_text
 
-        return f"Mock OpenAI response: {prompt}"
+        return (
+            "This is a mocked response from the AI. "
+            "Replace it with OpenAI later."
+        )

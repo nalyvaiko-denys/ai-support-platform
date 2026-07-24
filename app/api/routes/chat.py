@@ -8,7 +8,10 @@ from app.services.chat_service import ChatService
 router = APIRouter()
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+)
 async def chat(
     request: ChatRequest,
     db: AsyncSession = Depends(get_db),

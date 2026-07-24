@@ -16,7 +16,10 @@ class ChatService:
         session_id: str,
         message: str,
     ) -> str:
-        history = await self.repository.get_by_session(session_id)
+        history = await self.repository.get_last_messages(
+            session_id=session_id,
+            limit=10,
+        )
 
         prompt = PromptBuilder.build(
             history=history,

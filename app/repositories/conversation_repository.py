@@ -14,10 +14,19 @@ class ConversationRepository:
         await self.db.refresh(conversation)
         return conversation
 
-    async def get_by_session(self, session_id: str) -> list[Conversation]:
+    async def get_last_messages(
+            self,
+            session_id: str,
+            limit: int = 10,
+    ) -> list[Conversation]:
         result = await self.db.execute(
-            select(Conversation).where(
-                Conversation.session_id == session_id
-            )
+            select(Conversation)
+            .where(Conversation.session_id == session_id)
+            .order_by(Conversation.created_at.desc())
+            .limit(limit)
         )
-        return list(result.scalars().all())
+
+        conversations = list(result.scalars().all())
+        conversations.reverse()
+
+        return conversations
