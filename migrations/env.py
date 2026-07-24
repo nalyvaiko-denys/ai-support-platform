@@ -12,9 +12,14 @@ from app.db.base import Base
 # access to the values within the .ini file in use.
 config = context.config
 
+sync_database_url = settings.database_url.replace(
+    "postgresql+asyncpg",
+    "postgresql+psycopg",
+)
+
 config.set_main_option(
     "sqlalchemy.url",
-    settings.database_url,
+    sync_database_url,
 )
 
 # Interpret the config file for Python logging.
