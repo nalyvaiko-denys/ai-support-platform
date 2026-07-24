@@ -11,6 +11,9 @@ class ChatService:
         self.repository = ConversationRepository(db)
 
     async def ask(self, session_id: str, message: str) -> str:
+        history = await self.repository.get_by_session(session_id)
+        print(f"History messages: {len(history)}")
+
         response = await self.client.generate(message)
 
         conversation = Conversation(
