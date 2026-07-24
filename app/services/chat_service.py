@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.openai_client import OpenAIClient
 from app.models.conversation import Conversation
+from app.prompt.builder import PromptBuilder
 from app.repositories.conversation_repository import ConversationRepository
 
 
@@ -10,11 +11,21 @@ class ChatService:
         self.client = OpenAIClient()
         self.repository = ConversationRepository(db)
 
-    async def ask(self, session_id: str, message: str) -> str:
+    async def ask(
+        self,
+        session_id: str,
+        message: str,
+    ) -> str:
         history = await self.repository.get_by_session(session_id)
-        print(f"History messages: {len(history)}")
 
-        response = await self.client.generate(message)
+        prompt = PromptBuilder.build(
+            history=history,
+            message=message,
+        )
+
+        print(prompt)
+
+        response = await self.client.generate(prompt)
 
         conversation = Conversation(
             session_id=session_id,
