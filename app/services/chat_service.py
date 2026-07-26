@@ -1,46 +1,45 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.llm.openai_client import OpenAIClient
 from app.models.conversation import Conversation
-from app.prompt.builder import PromptBuilder
+from app.llm.prompt_builder import PromptBuilder
 from app.repositories.conversation_repository import ConversationRepository
 
 
 class ChatService:
-    def __init__(self, db: AsyncSession) -> None:
-        self.client = OpenAIClient()
-        self.repository = ConversationRepository(db)
-
-    async def ask(
+    def __init__(
         self,
-        session_id: str,
-        message: str,
-    ) -> str:
-        history = await self.repository.get_last_messages(
-            session_id=session_id,
-            limit=10,
-        )
+        repository: ConversationRepository,
+        client: OpenAIClient,
+    ) -> None:
+        self.repository = repository
+        self.client = client
 
-        prompt = PromptBuilder.build(
+    async def ask(self, session_id: str, message: str) -> str:
+        history = await self.repository.get_last_messages(session_id)
+
+        # ТУТ У МАЙБУТНЬОМУ БУДЕ:
+        # retrieved_docs = await self.document_repository.search(message)
+        # context = "\n\n".join([doc.content for doc in retrieved_docs])
+        context = ""
+
+        messages = PromptBuilder.build(
             history=history,
             message=message,
+            context=context,
         )
 
-        print(prompt)
-
-        response = await self.client.generate(prompt)
+        result = await self.client.generate(messages)
 
         conversation = Conversation(
             session_id=session_id,
             user_message=message,
-            ai_response=response,
-            model="gpt-4.1",
-            prompt_tokens=0,
-            completion_tokens=0,
-            total_tokens=0,
-            response_time_ms=0,
+            ai_response=result["text"],
+            model=result["model"],
+            prompt_tokens=result["prompt_tokens"],
+            completion_tokens=result["completion_tokens"],
+            total_tokens=result["total_tokens"],
+            response_time_ms=result["response_time_ms"],
         )
 
         await self.repository.create(conversation)
 
-        return response
+        return result["text"]

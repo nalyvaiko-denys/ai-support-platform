@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 
+from app.schemas.llm import LLMResponse
+
 
 class BaseLLMClient(ABC):
     @abstractmethod
-    async def generate(self, prompt: str) -> str:
-        """Generate response from LLM."""
+    async def generate(self, messages: list[dict[str, str]]) -> LLMResponse:
+        raise NotImplementedError
