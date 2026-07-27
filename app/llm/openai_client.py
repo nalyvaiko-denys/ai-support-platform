@@ -9,6 +9,7 @@ from app.llm.client import BaseLLMClient
 
 logger = logging.getLogger(__name__)
 
+
 class OpenAIClient(BaseLLMClient):
     def __init__(self) -> None:
         self.client = AsyncOpenAI(api_key=settings.openai_api_key)
@@ -50,3 +51,16 @@ class OpenAIClient(BaseLLMClient):
             "total_tokens": response.usage.total_tokens,
             "response_time_ms": elapsed,
         }
+
+    # ДОДАНО НОВИЙ МЕТОД:
+    async def create_embedding(self, text: str) -> list[float]:
+        """Генерує векторне представлення для тексту."""
+        try:
+            response = await self.client.embeddings.create(
+                input=text,
+                model="text-embedding-3-small"  # Модель, що повертає вектори розміром 1536
+            )
+            return response.data[0].embedding
+        except Exception as e:
+            logger.exception("Помилка при створенні ембедингу")
+            raise e
