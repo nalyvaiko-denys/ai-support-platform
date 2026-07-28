@@ -1,0 +1,123 @@
+from collections.abc import Iterator
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.dependencies.services import (
+    get_chat_service,
+)
+from app.main import app
+
+
+class FakeChatService:
+    async def ask(
+        self,
+        session_id: str,
+        message: str,
+    ) -> str:
+        return (
+            f"Mock reply for {session_id}: "
+            f"{message}"
+        )
+
+    async def get_history(
+        self,
+        session_id: str,
+        *,
+        limit: int = 50,
+    ) -> list[object]:
+        del session_id, limit
+
+        return []
+
+
+@pytest.fixture
+def client() -> Iterator[TestClient]:
+    service = FakeChatService()
+
+    app.dependency_overrides[
+        get_chat_service
+    ] = lambda: service
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+
+
+def test_accepts_valid_message(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/test-session",
+        json={
+            "message": "  Як змінити PIN-код?  ",
+        },
+    )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload["session_id"] == "test-session"
+    assert payload["message"] == (
+        "Як змінити PIN-код?"
+    )
+    assert "Як змінити PIN-код?" in payload["reply"]
+
+
+def test_rejects_blank_message(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/test-session",
+        json={
+            "message": "   ",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_rejects_extra_fields(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/test-session",
+        json={
+            "message": "Test",
+            "unexpected": True,
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["type"] == (
+        "extra_forbidden"
+    )
+
+
+def test_rejects_invalid_session_id(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/invalid.session",
+        json={
+            "message": "Test",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_returns_empty_history(
+    client: TestClient,
+) -> None:
+    response = client.get(
+        "/api/test-session/history"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "session_id": "test-session",
+        "messages": [],
+    }
