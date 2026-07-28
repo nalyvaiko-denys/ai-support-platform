@@ -17,7 +17,6 @@ class DocumentRepository:
             query_embedding: list[float],
             limit: int = 3
     ) -> list[DocumentChunk]:
-        """Шукає найближчі за змістом документи."""
         result = await self.db.execute(
             select(DocumentChunk)
             .order_by(DocumentChunk.embedding.cosine_distance(query_embedding))

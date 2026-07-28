@@ -52,13 +52,11 @@ class OpenAIClient(BaseLLMClient):
             "response_time_ms": elapsed,
         }
 
-    # ДОДАНО НОВИЙ МЕТОД:
     async def create_embedding(self, text: str) -> list[float]:
-        """Генерує векторне представлення для тексту."""
         try:
             response = await self.client.embeddings.create(
                 input=text,
-                model="text-embedding-3-small"  # Модель, що повертає вектори розміром 1536
+                model="text-embedding-3-small"
             )
             return response.data[0].embedding
         except Exception as e:

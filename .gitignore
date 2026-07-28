@@ -24,3 +24,9 @@ htmlcov/
 
 # macOS
 .DS_Store
+
+# Local audit artifacts
+*.zip
+current-openapi.json
+docker-build.log
+docker-runtime.log

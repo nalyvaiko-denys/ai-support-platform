@@ -1,21 +1,84 @@
+x-app: &app
+  image: ai-support-platform:local
+
+  build:
+    context: .
+    dockerfile: docker/app/Dockerfile
+
+  environment:
+    DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/ai_support
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+    DEBUG: ${DEBUG:-false}
+
 services:
   db:
-    image: postgres:17
-
-    container_name: ai-support-db
-
-    restart: unless-stopped
+    image: pgvector/pgvector:pg17
 
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ai_support
 
-    ports:
-      - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d ai_support"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+
+    command:
+      [
+        "alembic",
+        "upgrade",
+        "head"
+      ]
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    restart: "no"
+
+  api:
+    <<: *app
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+      migrate:
+        condition: service_completed_successfully
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+    restart: unless-stopped
 
 volumes:
   postgres_data:
