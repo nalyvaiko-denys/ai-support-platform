@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
+
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
 

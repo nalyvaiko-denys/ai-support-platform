@@ -1,64 +1,124 @@
 import logging
 import time
-from typing import Any
 
-from openai import APIConnectionError, APIStatusError, AsyncOpenAI, RateLimitError
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    AsyncOpenAI,
+    RateLimitError,
+)
 
-from app.core.config import settings
 from app.llm.client import BaseLLMClient
+from app.schemas.llm import LLMResponse
 
 logger = logging.getLogger(__name__)
 
 
 class OpenAIClient(BaseLLMClient):
-    def __init__(self) -> None:
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        chat_model: str,
+        embedding_model: str,
+    ) -> None:
+        self.client = AsyncOpenAI(
+            api_key=api_key,
+        )
+        self.chat_model = chat_model
+        self.embedding_model = embedding_model
 
-    async def generate(self, messages: list[dict[str, str]]) -> dict[str, Any]:
-        start = time.perf_counter()
+    async def generate(
+        self,
+        messages: list[dict[str, str]],
+    ) -> LLMResponse:
+        started_at = time.perf_counter()
 
         try:
             response = await self.client.chat.completions.create(
-                model=settings.openai_model,
+                model=self.chat_model,
                 messages=messages,
                 temperature=0.3,
             )
-
         except RateLimitError:
-            logger.exception("OpenAI rate limit exceeded")
+            logger.exception(
+                "OpenAI rate limit exceeded"
+            )
             raise
         except APIConnectionError:
-            logger.exception("OpenAI connection failed")
+            logger.exception(
+                "OpenAI connection failed"
+            )
             raise
         except APIStatusError:
-            logger.exception("OpenAI returned API error")
+            logger.exception(
+                "OpenAI returned an API error"
+            )
             raise
 
-        elapsed = int((time.perf_counter() - start) * 1000)
-
-        logger.info(
-            "OpenAI request completed model=%s total_tokens=%s duration_ms=%s",
-            response.model,
-            response.usage.total_tokens,
-            elapsed,
+        response_time_ms = int(
+            (time.perf_counter() - started_at) * 1000
         )
 
-        return {
-            "text": response.choices[0].message.content,
-            "model": response.model,
-            "prompt_tokens": response.usage.prompt_tokens,
-            "completion_tokens": response.usage.completion_tokens,
-            "total_tokens": response.usage.total_tokens,
-            "response_time_ms": elapsed,
-        }
+        usage = response.usage
 
-    async def create_embedding(self, text: str) -> list[float]:
+        result = LLMResponse(
+            text=(
+                response.choices[0].message.content
+                or ""
+            ),
+            model=response.model,
+            prompt_tokens=(
+                usage.prompt_tokens
+                if usage is not None
+                else 0
+            ),
+            completion_tokens=(
+                usage.completion_tokens
+                if usage is not None
+                else 0
+            ),
+            total_tokens=(
+                usage.total_tokens
+                if usage is not None
+                else 0
+            ),
+            response_time_ms=response_time_ms,
+        )
+
+        logger.info(
+            "OpenAI request completed "
+            "model=%s total_tokens=%s duration_ms=%s",
+            result.model,
+            result.total_tokens,
+            result.response_time_ms,
+        )
+
+        return result
+
+    async def create_embedding(
+        self,
+        text: str,
+    ) -> list[float]:
         try:
             response = await self.client.embeddings.create(
                 input=text,
-                model="text-embedding-3-small"
+                model=self.embedding_model,
             )
-            return response.data[0].embedding
-        except Exception as e:
-            logger.exception("Помилка при створенні ембедингу")
-            raise e
+        except RateLimitError:
+            logger.exception(
+                "OpenAI embedding rate limit exceeded"
+            )
+            raise
+        except APIConnectionError:
+            logger.exception(
+                "OpenAI embedding connection failed"
+            )
+            raise
+        except APIStatusError:
+            logger.exception(
+                "OpenAI embedding API error"
+            )
+            raise
+
+        return response.data[0].embedding

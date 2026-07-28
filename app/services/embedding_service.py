@@ -1,9 +1,15 @@
-from app.llm.openai_client import OpenAIClient
+from app.llm.client import BaseLLMClient
 
 
 class EmbeddingService:
-    def __init__(self, client: OpenAIClient) -> None:
+    def __init__(
+        self,
+        client: BaseLLMClient,
+    ) -> None:
         self.client = client
 
-    async def create_embedding(self, text: str) -> list[float]:
+    async def create_embedding(
+        self,
+        text: str,
+    ) -> list[float]:
         return await self.client.create_embedding(text)

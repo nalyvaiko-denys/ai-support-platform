@@ -8,16 +8,16 @@ class ConversationRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def create(self, conversation: Conversation) -> Conversation:
+    def add(
+        self,
+        conversation: Conversation,
+    ) -> None:
         self.db.add(conversation)
-        await self.db.commit()
-        await self.db.refresh(conversation)
-        return conversation
 
     async def get_last_messages(
-            self,
-            session_id: str,
-            limit: int = 10,
+        self,
+        session_id: str,
+        limit: int = 10,
     ) -> list[Conversation]:
         result = await self.db.execute(
             select(Conversation)

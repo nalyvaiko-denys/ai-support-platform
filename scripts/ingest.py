@@ -1,38 +1,49 @@
 import asyncio
-import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))
-
 from app.db.session import AsyncSessionLocal
-from app.llm.openai_client import OpenAIClient
+from app.llm.factory import get_llm_client
+from app.repositories.document_repository import (
+    DocumentRepository,
+)
 from app.services.embedding_service import EmbeddingService
 from app.services.ingest_service import IngestService
 
 
 async def main() -> None:
-    data_dir = Path(__file__).resolve().parent.parent / "data"
-    sample_file = data_dir / "monobank_faq.md"
+    project_root = Path(__file__).resolve().parent.parent
+    sample_file = project_root / "data" / "monobank_faq.md"
 
-    if not sample_file.exists():
-        print(f"Файл {sample_file} не знайдено!")
-        return
+    if not sample_file.is_file():
+        raise FileNotFoundError(
+            f"Knowledge-base file was not found: {sample_file}"
+        )
 
-    client = OpenAIClient()
+    client = get_llm_client()
     embedding_service = EmbeddingService(client)
 
     async with AsyncSessionLocal() as session:
+        repository = DocumentRepository(session)
+
         ingest_service = IngestService(
             db=session,
+            repository=repository,
             embedding_service=embedding_service,
         )
 
-        await ingest_service.ingest_file(
+        result = await ingest_service.ingest_file(
             file_path=sample_file,
             source="monobank_faq",
         )
 
-    print("✅ База знань успішно завантажена!")
+    if not result.changed:
+        print("Knowledge base is already up to date.")
+        return
+
+    print(
+        "Knowledge base updated: "
+        f"{result.chunks_written} chunks written."
+    )
 
 
 if __name__ == "__main__":
