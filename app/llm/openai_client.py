@@ -38,21 +38,21 @@ class OpenAIClient(BaseLLMClient):
             response = await self.client.chat.completions.create(
                 model=self.chat_model,
                 messages=messages,
-                temperature=0.3,
+                temperature=0.2,
             )
         except RateLimitError:
             logger.exception(
-                "OpenAI rate limit exceeded"
+                "OpenAI rate limit exceeded",
             )
             raise
         except APIConnectionError:
             logger.exception(
-                "OpenAI connection failed"
+                "OpenAI connection failed",
             )
             raise
         except APIStatusError:
             logger.exception(
-                "OpenAI returned an API error"
+                "OpenAI returned an API error",
             )
             raise
 
@@ -61,12 +61,15 @@ class OpenAIClient(BaseLLMClient):
         )
 
         usage = response.usage
+        text = response.choices[0].message.content or ""
+
+        if not text.strip():
+            raise RuntimeError(
+                "OpenAI returned an empty response"
+            )
 
         result = LLMResponse(
-            text=(
-                response.choices[0].message.content
-                or ""
-            ),
+            text=text,
             model=response.model,
             prompt_tokens=(
                 usage.prompt_tokens
@@ -87,8 +90,10 @@ class OpenAIClient(BaseLLMClient):
         )
 
         logger.info(
-            "OpenAI request completed "
-            "model=%s total_tokens=%s duration_ms=%s",
+            (
+                "OpenAI request completed "
+                "model=%s total_tokens=%s duration_ms=%s"
+            ),
             result.model,
             result.total_tokens,
             result.response_time_ms,
@@ -107,18 +112,23 @@ class OpenAIClient(BaseLLMClient):
             )
         except RateLimitError:
             logger.exception(
-                "OpenAI embedding rate limit exceeded"
+                "OpenAI embedding rate limit exceeded",
             )
             raise
         except APIConnectionError:
             logger.exception(
-                "OpenAI embedding connection failed"
+                "OpenAI embedding connection failed",
             )
             raise
         except APIStatusError:
             logger.exception(
-                "OpenAI embedding API error"
+                "OpenAI embedding API error",
             )
             raise
+
+        if not response.data:
+            raise RuntimeError(
+                "OpenAI returned no embedding data"
+            )
 
         return response.data[0].embedding

@@ -6,11 +6,7 @@ from app.schemas.llm import LLMResponse
 
 
 class MockLLMClient(BaseLLMClient):
-    def __init__(
-        self,
-        *,
-        embedding_dimension: int,
-    ) -> None:
+    def __init__(self, *, embedding_dimension: int) -> None:
         self.embedding_dimension = embedding_dimension
 
     async def generate(
@@ -28,7 +24,8 @@ class MockLLMClient(BaseLLMClient):
 
         return LLMResponse(
             text=(
-                "Demo mode is active: no external LLM is called. "
+                "Mock provider is active. "
+                "No external AI request was made. "
                 f'Received message: "{user_message}"'
             ),
             model="mock-llm",
@@ -38,10 +35,7 @@ class MockLLMClient(BaseLLMClient):
             response_time_ms=0,
         )
 
-    async def create_embedding(
-        self,
-        text: str,
-    ) -> list[float]:
+    async def create_embedding(self, text: str) -> list[float]:
         digest = hashlib.sha256(
             text.encode("utf-8"),
         ).digest()
@@ -52,7 +46,7 @@ class MockLLMClient(BaseLLMClient):
         ]
 
         norm = math.sqrt(
-            sum(value * value for value in vector)
+            sum(value * value for value in vector),
         )
 
         if norm == 0:
