@@ -1,21 +1,103 @@
+x-app: &app
+  image: ai-support-platform:local
+
+  build:
+    context: .
+    dockerfile: docker/app/Dockerfile
+
+  environment:
+    DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/ai_support
+    LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+    OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+    EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1536}
+    DEBUG: ${DEBUG:-false}
+    CORS_ORIGINS: ${CORS_ORIGINS:-[]}
+
+  init: true
+  read_only: true
+
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+
+  security_opt:
+    - no-new-privileges:true
+
+  cap_drop:
+    - ALL
+
+  pids_limit: 256
+
 services:
   db:
-    image: postgres:17
-
-    container_name: ai-support-db
-
-    restart: unless-stopped
+    image: pgvector/pgvector:pg17@sha256:d2ef61f42ef767baa5a1475393303cc235bcd92febd9d7014eddb48b41f3bad0
 
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ai_support
 
-    ports:
-      - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d ai_support"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+
+    command:
+      [
+        "alembic",
+        "upgrade",
+        "head"
+      ]
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    restart: "no"
+
+  api:
+    <<: *app
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+      migrate:
+        condition: service_completed_successfully
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+    stop_grace_period: 10s
+    restart: unless-stopped
 
 volumes:
   postgres_data:

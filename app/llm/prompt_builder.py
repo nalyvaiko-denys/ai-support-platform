@@ -1,29 +1,47 @@
+from app.llm.prompts import build_system_prompt
 from app.models.conversation import Conversation
 
 
 class PromptBuilder:
-    MAX_HISTORY = 5  # 5 останніх пар повідомлень для економії токенів
+    MAX_HISTORY = 5
 
     @classmethod
     def build(
-            cls,
-            history: list[Conversation],
-            message: str,
-            context: str = "",
+        cls,
+        history: list[Conversation],
+        message: str,
+        context: str = "",
     ) -> list[dict[str, str]]:
-        system_prompt = (
-            "Ти — привітний помічник служби підтримки"
-            "Відповідай на запитання клієнта виключно на основі наданого контексту. "
-            "Якщо інформації для відповіді немає в контексті, чесно скажи про це і запропонуй покликати людину-оператора.\n\n"
-            f"Контекст бази знань:\n{context}"
-        )
 
-        messages = [{"role": "system", "content": system_prompt}]
+        messages = [
+            {
+                "role": "system",
+                "content": build_system_prompt(context),
+            }
+        ]
+
+        history = history[-cls.MAX_HISTORY:]
 
         for item in history:
-            messages.append({"role": "user", "content": item.user_message})
-            messages.append({"role": "assistant", "content": item.ai_response})
+            messages.append(
+                {
+                    "role": "user",
+                    "content": item.user_message,
+                }
+            )
 
-        messages.append({"role": "user", "content": message})
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": item.ai_response,
+                }
+            )
+
+        messages.append(
+            {
+                "role": "user",
+                "content": message,
+            }
+        )
 
         return messages
