@@ -28,8 +28,8 @@ class MockLLMClient(BaseLLMClient):
 
         return LLMResponse(
             text=(
-                "Демо-режим активний: зовнішній LLM не викликається. "
-                f"Отримано повідомлення: «{user_message}»"
+                "Demo mode is active: no external LLM is called. "
+                f'Received message: "{user_message}"'
             ),
             model="mock-llm",
             prompt_tokens=0,

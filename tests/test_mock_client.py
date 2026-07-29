@@ -15,13 +15,13 @@ async def test_generates_deterministic_demo_response() -> None:
         [
             {
                 "role": "user",
-                "content": "Як змінити PIN-код?",
+                "content": "How can I change my card PIN?",
             },
         ]
     )
 
     assert response.model == "mock-llm"
-    assert "Як змінити PIN-код?" in response.text
+    assert "How can I change my card PIN?" in response.text
     assert response.total_tokens == 0
     assert response.response_time_ms == 0
 

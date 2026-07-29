@@ -52,8 +52,8 @@ class ChatService:
 
         context = "\n\n".join(
             (
-                f"Джерело: {document.source}\n"
-                f"Інформація: {document.content}"
+                f"Source: {document.source}\n"
+                f"Information: {document.content}"
             )
             for document in similar_docs
         )

@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     openai_embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = 1536
 
+    cors_origins: list[str] = []
     debug: bool = False
 
     model_config = SettingsConfigDict(

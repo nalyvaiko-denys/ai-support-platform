@@ -13,6 +13,7 @@ x-app: &app
     OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
     EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1536}
     DEBUG: ${DEBUG:-false}
+    CORS_ORIGINS: ${CORS_ORIGINS:-[]}
 
   init: true
   read_only: true

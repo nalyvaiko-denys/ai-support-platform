@@ -12,7 +12,7 @@ from app.services.ingest_service import IngestService
 
 async def main() -> None:
     project_root = Path(__file__).resolve().parent.parent
-    sample_file = project_root / "data" / "monobank_faq.md"
+    sample_file = project_root / "data" / "bank_faq.md"
 
     if not sample_file.is_file():
         raise FileNotFoundError(

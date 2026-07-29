@@ -51,7 +51,7 @@ def test_accepts_valid_message(
     response = client.post(
         "/api/test-session",
         json={
-            "message": "  Як змінити PIN-код?  ",
+            "message": "  How can I change my card PIN?  ",
         },
     )
 
@@ -61,9 +61,9 @@ def test_accepts_valid_message(
 
     assert payload["session_id"] == "test-session"
     assert payload["message"] == (
-        "Як змінити PIN-код?"
+        "How can I change my card PIN?"
     )
-    assert "Як змінити PIN-код?" in payload["reply"]
+    assert "How can I change my card PIN?" in payload["reply"]
 
 
 def test_rejects_blank_message(
