@@ -1,5 +1,7 @@
 .git
+.github
 .gitignore
+.gitattributes
 
 .venv
 venv
@@ -10,18 +12,20 @@ __pycache__
 .pytest_cache
 .ruff_cache
 .mypy_cache
+.coverage
+coverage.xml
+htmlcov
 
 .idea
 .vscode
 
 .env
 .env.*
-
 !.env.example
 
 .DS_Store
 
-postgres_data
+tests
 
 *.zip
 docker-build.log

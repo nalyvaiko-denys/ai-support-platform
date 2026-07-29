@@ -14,9 +14,23 @@ x-app: &app
     EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1536}
     DEBUG: ${DEBUG:-false}
 
+  init: true
+  read_only: true
+
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+
+  security_opt:
+    - no-new-privileges:true
+
+  cap_drop:
+    - ALL
+
+  pids_limit: 256
+
 services:
   db:
-    image: pgvector/pgvector:pg17
+    image: pgvector/pgvector:pg17@sha256:d2ef61f42ef767baa5a1475393303cc235bcd92febd9d7014eddb48b41f3bad0
 
     environment:
       POSTGRES_USER: postgres
@@ -81,6 +95,7 @@ services:
       retries: 10
       start_period: 10s
 
+    stop_grace_period: 10s
     restart: unless-stopped
 
 volumes:
