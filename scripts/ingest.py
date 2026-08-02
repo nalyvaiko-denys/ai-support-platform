@@ -15,9 +15,7 @@ async def main() -> None:
     sample_file = project_root / "data" / "bank_faq.md"
 
     if not sample_file.is_file():
-        raise FileNotFoundError(
-            f"Knowledge-base file was not found: {sample_file}"
-        )
+        raise FileNotFoundError(f"Knowledge-base file was not found: {sample_file}")
 
     client = get_llm_client()
     embedding_service = EmbeddingService(client)
@@ -40,10 +38,7 @@ async def main() -> None:
         print("Knowledge base is already up to date.")
         return
 
-    print(
-        "Knowledge base updated: "
-        f"{result.chunks_written} chunks written."
-    )
+    print(f"Knowledge base updated: {result.chunks_written} chunks written.")
 
 
 if __name__ == "__main__":

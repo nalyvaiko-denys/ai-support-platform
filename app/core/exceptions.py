@@ -27,10 +27,7 @@ def register_exception_handlers(
         return JSONResponse(
             status_code=429,
             content={
-                "detail": (
-                    "AI service rate limit exceeded. "
-                    "Please try again later."
-                ),
+                "detail": ("AI service rate limit exceeded. Please try again later."),
             },
         )
 
@@ -47,9 +44,7 @@ def register_exception_handlers(
         return JSONResponse(
             status_code=503,
             content={
-                "detail": (
-                    "AI service is temporarily unavailable."
-                ),
+                "detail": ("AI service is temporarily unavailable."),
             },
         )
 
@@ -66,9 +61,7 @@ def register_exception_handlers(
         return JSONResponse(
             status_code=502,
             content={
-                "detail": (
-                    "AI service returned an upstream error."
-                ),
+                "detail": ("AI service returned an upstream error."),
             },
         )
 

@@ -12,13 +12,16 @@ semantic knowledge-base search, and pluggable LLM providers.
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![pgvector](https://img.shields.io/badge/pgvector-0.5-4169E1)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-15%20passed-success)
+[![CI](https://github.com/nalyvaiko-denys/ai-support-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/nalyvaiko-denys/ai-support-platform/actions/workflows/ci.yml)
 
 </div>
 
 ---
 
 ## Project overview
+
+> Product design concept. The repository implements the backend represented by
+> this overview, not the website shown in the visual.
 
 ![AI Support Platform overview](docs/assets/project-overview.png)
 
@@ -40,20 +43,23 @@ automated tests, and CI workflow.
 
 ## Client experience
 
+> Product design concept. The frontend shown below is not implemented in this
+> repository.
+
 ![Client AI assistant](docs/assets/client-assistant.png)
 
 The client-facing assistant demonstrates how the backend can be integrated into
 a banking website or another digital product.
 
-A user can ask a support question, receive a knowledge-based response, continue
-the conversation, and use the assistant as an entry point to human support.
-
-> Product design concept. The frontend shown here is not implemented in this
-> repository.
+The implemented API supports support questions, knowledge-based responses, and
+conversation history. Human handoff remains part of the product concept.
 
 ---
 
 ## Support operations
+
+> Product design concept. Operator controls, confidence metrics, approval flows,
+> and escalation management are not implemented in the current backend.
 
 ![Support operations dashboard](docs/assets/support-operations-dashboard.png)
 
@@ -63,10 +69,6 @@ AI-assisted customer service.
 Routine questions can be handled automatically, while complex requests can be
 reviewed by a support specialist. The concept includes conversation monitoring,
 review actions, retrieved knowledge sources, and escalation controls.
-
-> Product design concept. Operator controls, confidence metrics, approval flows,
-> and escalation management are potential extensions and are not implemented in
-> the current backend.
 
 ---
 
@@ -101,12 +103,14 @@ persistence.
 - Knowledge-base ingestion from Markdown
 - Safe text chunking with configurable overlap
 - Embedding generation through a provider abstraction
-- Semantic search with PostgreSQL and pgvector
+- Embedding metadata tracking across provider and model changes
+- Similarity filtering and HNSW vector search with PostgreSQL and pgvector
 - Context-aware prompt construction
 - OpenAI and deterministic mock providers
 - Idempotent knowledge-base ingestion
 - Alembic database migrations
-- Docker Compose orchestration and health checks
+- Separate liveness and database readiness checks
+- Docker Compose orchestration and hardened application containers
 - Global handling of upstream OpenAI errors
 - Ruff static analysis
 - Automated pytest suite
@@ -134,21 +138,7 @@ persistence.
 | Containers | Docker | Docker Compose |
 | Testing | pytest | pytest, pytest-asyncio, pytest-cov |
 | Code quality | Ruff | configured in `pyproject.toml` |
-| CI | GitHub Actions | quality and Docker smoke jobs |
-
-### Stack shown on the first screen
-
-Use these six labels in the technology row of the project overview visual:
-
-1. **Python 3.13**
-2. **FastAPI 0.139**
-3. **PostgreSQL 17**
-4. **pgvector 0.5**
-5. **OpenAI GPT-4.1-mini**
-6. **Docker Compose**
-
-Patch versions are intentionally omitted from the visual to keep it readable.
-The exact verified versions are listed in the table above.
+| CI | GitHub Actions | quality and end-to-end Docker smoke jobs |
 
 ---
 
@@ -242,7 +232,14 @@ docker compose up -d --build --wait
 OpenAI mode uses:
 
 - `gpt-4.1-mini` for response generation;
-- `text-embedding-3-small` for embeddings.
+- `text-embedding-3-small` for 1,536-dimensional embeddings.
+
+Retrieval defaults can be adjusted without changing the database schema:
+
+```env
+RETRIEVAL_MIN_SIMILARITY=0.25
+RETRIEVAL_LIMIT=3
+```
 
 OpenAI mode can generate API usage and associated costs. Never commit `.env` or
 API credentials.
@@ -263,7 +260,11 @@ The source file is:
 data/bank_faq.md
 ```
 
-Ingestion is idempotent. Running it again without changing the source returns:
+Ingestion is idempotent. It tracks the content hash, embedding provider, model,
+and dimension for every chunk. A provider or model change regenerates the stored
+embeddings even when the source text has not changed.
+
+Running ingestion again without changing the source or embedding profile returns:
 
 ```text
 Knowledge base is already up to date.
@@ -281,6 +282,17 @@ banking documentation.
 ```http
 GET /api/health
 ```
+
+This endpoint reports whether the API process is running.
+
+### Readiness check
+
+```http
+GET /api/ready
+```
+
+This endpoint verifies that the API can reach PostgreSQL. Docker uses it as the
+application container health check.
 
 ### Database connectivity check
 
@@ -343,16 +355,16 @@ Run static analysis:
 uv run --locked ruff check .
 ```
 
+Check formatting:
+
+```bash
+uv run --locked ruff format --check .
+```
+
 Run the test suite:
 
 ```bash
 uv run --locked python -m pytest -q
-```
-
-Current verified result:
-
-```text
-15 passed
 ```
 
 Run tests with coverage:
@@ -385,7 +397,7 @@ local non-Docker execution.
 │   ├── core               # Settings and exception handlers
 │   ├── db                 # SQLAlchemy engine and sessions
 │   ├── dependencies       # Dependency injection
-│   ├── llm                # Providers, prompts, parser, and chunker
+│   ├── llm                # Providers, prompts, and chunker
 │   ├── models             # SQLAlchemy models
 │   ├── repositories       # Database access layer
 │   ├── schemas            # Pydantic schemas
@@ -398,6 +410,7 @@ local non-Docker execution.
 ├── scripts                # Knowledge-base ingestion command
 ├── tests                  # Unit and API tests
 ├── docker-compose.yml
+├── LICENSE
 ├── pyproject.toml
 └── uv.lock
 ```
@@ -414,8 +427,7 @@ The support dashboard is not implemented as a frontend application in this
 repository.
 
 Potential production extensions include authentication, authorization, rate
-limiting, observability, source citations, retrieval confidence thresholds,
-and a real human-escalation workflow.
+limiting, observability, source citations, and a real human-escalation workflow.
 
 ---
 
@@ -425,3 +437,5 @@ This is an independent educational portfolio project.
 
 The included sample knowledge base may be incomplete or outdated and
 must not be treated as official financial guidance.
+
+The source code is available under the terms of the [MIT License](LICENSE).

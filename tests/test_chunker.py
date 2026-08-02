@@ -9,10 +9,7 @@ def test_returns_empty_list_for_blank_text() -> None:
 
 
 def test_splits_long_text_into_non_empty_chunks() -> None:
-    text = " ".join(
-        f"word-{index}"
-        for index in range(200)
-    )
+    text = " ".join(f"word-{index}" for index in range(200))
 
     chunks = TextChunker.chunk(
         text,
@@ -22,10 +19,7 @@ def test_splits_long_text_into_non_empty_chunks() -> None:
 
     assert len(chunks) > 1
     assert all(chunks)
-    assert all(
-        len(chunk) <= 120
-        for chunk in chunks
-    )
+    assert all(len(chunk) <= 120 for chunk in chunks)
 
 
 @pytest.mark.parametrize(

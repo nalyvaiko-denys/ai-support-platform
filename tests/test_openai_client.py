@@ -26,6 +26,7 @@ def create_test_client(
         api_key="test-api-key",
         chat_model="gpt-4.1-mini",
         embedding_model="text-embedding-3-small",
+        embedding_dimension=3,
     )
 
 
@@ -40,10 +41,7 @@ async def test_openai_generate_calls_sdk_correctly(
         choices=[
             SimpleNamespace(
                 message=SimpleNamespace(
-                    content=(
-                        "You can change your PIN in the "
-                        "card settings."
-                    ),
+                    content=("You can change your PIN in the card settings."),
                 ),
             ),
         ],
@@ -66,9 +64,7 @@ async def test_openai_generate_calls_sdk_correctly(
     messages = [
         {
             "role": "system",
-            "content": (
-                "Answer only using the knowledge-base context."
-            ),
+            "content": ("Answer only using the knowledge-base context."),
         },
         {
             "role": "user",
@@ -84,9 +80,7 @@ async def test_openai_generate_calls_sdk_correctly(
         temperature=0.2,
     )
 
-    assert result.text == (
-        "You can change your PIN in the card settings."
-    )
+    assert result.text == ("You can change your PIN in the card settings.")
     assert result.model == "gpt-4.1-mini"
     assert result.prompt_tokens == 100
     assert result.completion_tokens == 20
@@ -121,13 +115,12 @@ async def test_openai_embedding_calls_sdk_correctly(
         sdk_client=sdk_client,
     )
 
-    result = await client.create_embedding(
-        "How can I change my card PIN?"
-    )
+    result = await client.create_embedding("How can I change my card PIN?")
 
     sdk_client.embeddings.create.assert_awaited_once_with(
         input="How can I change my card PIN?",
         model="text-embedding-3-small",
+        dimensions=3,
     )
 
     assert result == expected_embedding

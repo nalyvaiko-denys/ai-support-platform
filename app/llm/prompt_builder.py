@@ -20,7 +20,7 @@ class PromptBuilder:
             }
         ]
 
-        history = history[-cls.MAX_HISTORY:]
+        history = history[-cls.MAX_HISTORY :]
 
         for item in history:
             messages.append(

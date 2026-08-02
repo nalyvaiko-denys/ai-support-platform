@@ -1,13 +1,21 @@
 import hashlib
 import math
 
-from app.llm.client import BaseLLMClient
+from app.llm.client import BaseLLMClient, EmbeddingProfile
 from app.schemas.llm import LLMResponse
 
 
 class MockLLMClient(BaseLLMClient):
     def __init__(self, *, embedding_dimension: int) -> None:
         self.embedding_dimension = embedding_dimension
+
+    @property
+    def embedding_profile(self) -> EmbeddingProfile:
+        return EmbeddingProfile(
+            provider="mock",
+            model="sha256-byte-vector-v1",
+            dimension=self.embedding_dimension,
+        )
 
     async def generate(
         self,
@@ -52,7 +60,4 @@ class MockLLMClient(BaseLLMClient):
         if norm == 0:
             return vector
 
-        return [
-            value / norm
-            for value in vector
-        ]
+        return [value / norm for value in vector]

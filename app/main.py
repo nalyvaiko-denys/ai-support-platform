@@ -27,29 +27,24 @@ def create_app() -> FastAPI:
             "history, knowledge-base retrieval, vector search and "
             "pluggable LLM providers."
         ),
-        version="1.0.0",
+        version="0.1.0",
         lifespan=lifespan,
         license_info={
             "name": "MIT",
+            "identifier": "MIT",
         },
         openapi_tags=[
             {
                 "name": "Chat",
-                "description": (
-                    "Send messages and retrieve conversation history."
-                ),
+                "description": ("Send messages and retrieve conversation history."),
             },
             {
                 "name": "Health",
-                "description": (
-                    "Application health and readiness endpoints."
-                ),
+                "description": ("Application health and readiness endpoints."),
             },
             {
                 "name": "Database",
-                "description": (
-                    "Database connectivity diagnostics."
-                ),
+                "description": ("Database connectivity diagnostics."),
             },
         ],
     )

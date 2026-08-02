@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.llm.client import BaseLLMClient
 from app.llm.factory import get_llm_client
@@ -74,6 +75,8 @@ def get_chat_service(
         document_repository=document_repository,
         embedding_service=embedding_service,
         client=client,
+        retrieval_min_similarity=settings.retrieval_min_similarity,
+        retrieval_limit=settings.retrieval_limit,
     )
 
 

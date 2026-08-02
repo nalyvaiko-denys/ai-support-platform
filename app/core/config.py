@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,8 +16,16 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     openai_model: str = "gpt-4.1-mini"
     openai_embedding_model: str = "text-embedding-3-small"
-    embedding_dimension: int = 1536
-
+    retrieval_min_similarity: float = Field(
+        default=0.25,
+        ge=0.0,
+        le=1.0,
+    )
+    retrieval_limit: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+    )
     cors_origins: list[str] = []
     debug: bool = False
 
@@ -37,14 +45,7 @@ class Settings(BaseSettings):
             )
 
             if not api_key:
-                raise ValueError(
-                    "OPENAI_API_KEY is required when LLM_PROVIDER=openai"
-                )
-
-        if self.embedding_dimension <= 0:
-            raise ValueError(
-                "EMBEDDING_DIMENSION must be greater than zero"
-            )
+                raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
 
         return self
 

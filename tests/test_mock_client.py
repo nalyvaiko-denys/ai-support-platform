@@ -42,12 +42,8 @@ async def test_mock_embedding_is_deterministic() -> None:
         embedding_dimension=1536,
     )
 
-    first = await client.create_embedding(
-        "How can I change my card PIN?"
-    )
-    second = await client.create_embedding(
-        "How can I change my card PIN?"
-    )
+    first = await client.create_embedding("How can I change my card PIN?")
+    second = await client.create_embedding("How can I change my card PIN?")
 
     assert first == second
     assert len(first) == 1536
@@ -59,9 +55,7 @@ async def test_mock_embedding_is_normalized() -> None:
         embedding_dimension=1536,
     )
 
-    embedding = await client.create_embedding(
-        "How can I change my card PIN?"
-    )
+    embedding = await client.create_embedding("How can I change my card PIN?")
 
     vector_length = math.sqrt(
         sum(value * value for value in embedding),

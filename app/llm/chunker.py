@@ -54,16 +54,10 @@ class TextChunker:
         overlap: int,
     ) -> None:
         if chunk_size <= 0:
-            raise ValueError(
-                "chunk_size must be greater than zero"
-            )
+            raise ValueError("chunk_size must be greater than zero")
 
         if overlap < 0:
-            raise ValueError(
-                "overlap must not be negative"
-            )
+            raise ValueError("overlap must not be negative")
 
         if overlap >= chunk_size:
-            raise ValueError(
-                "overlap must be smaller than chunk_size"
-            )
+            raise ValueError("overlap must be smaller than chunk_size")

@@ -27,12 +27,6 @@ def build_system_prompt(context: str) -> str:
     prepared_context = context.strip()
 
     if not prepared_context:
-        prepared_context = (
-            "No relevant knowledge-base information was found."
-        )
+        prepared_context = "No relevant knowledge-base information was found."
 
-    return (
-        f"{SYSTEM_PROMPT}\n\n"
-        "Knowledge base context:\n"
-        f"{prepared_context}"
-    )
+    return f"{SYSTEM_PROMPT}\n\nKnowledge base context:\n{prepared_context}"

@@ -21,12 +21,16 @@ class ChatService:
         document_repository: DocumentRepository,
         embedding_service: EmbeddingService,
         client: BaseLLMClient,
+        retrieval_min_similarity: float,
+        retrieval_limit: int,
     ) -> None:
         self.db = db
         self.repository = repository
         self.document_repository = document_repository
         self.embedding_service = embedding_service
         self.client = client
+        self.retrieval_min_similarity = retrieval_min_similarity
+        self.retrieval_limit = retrieval_limit
 
     async def ask(
         self,
@@ -37,24 +41,18 @@ class ChatService:
             session_id,
         )
 
-        query_embedding = (
-            await self.embedding_service.create_embedding(
-                message,
-            )
+        query_embedding = await self.embedding_service.create_embedding(
+            message,
         )
 
-        similar_docs = (
-            await self.document_repository.search_similar(
-                query_embedding=query_embedding,
-                limit=3,
-            )
+        similar_docs = await self.document_repository.search_similar(
+            query_embedding=query_embedding,
+            min_similarity=self.retrieval_min_similarity,
+            limit=self.retrieval_limit,
         )
 
         context = "\n\n".join(
-            (
-                f"Source: {document.source}\n"
-                f"Information: {document.content}"
-            )
+            (f"Source: {document.source}\nInformation: {document.content}")
             for document in similar_docs
         )
 
