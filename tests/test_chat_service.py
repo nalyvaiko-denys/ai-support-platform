@@ -35,9 +35,11 @@ class FakeConversationRepository:
 
     async def get_last_messages(
         self,
+        owner_id: str,
         session_id: str,
         limit: int = 10,
     ) -> list[object]:
+        assert owner_id == "user-1"
         del session_id, limit
         return self.history
 
@@ -130,6 +132,7 @@ async def test_ask_runs_rag_flow_and_persists_response() -> None:
     service, repository, document_repository, client = create_service(session)
 
     reply = await service.ask(
+        owner_id="user-1",
         session_id="session-1",
         message="Current question",
     )
@@ -148,6 +151,7 @@ async def test_ask_runs_rag_flow_and_persists_response() -> None:
     assert len(repository.added) == 1
 
     conversation = repository.added[0]
+    assert conversation.owner_id == "user-1"
     assert conversation.session_id == "session-1"
     assert conversation.ai_response == "Current answer"
     assert conversation.total_tokens == 15
@@ -162,6 +166,7 @@ async def test_ask_rolls_back_when_commit_fails() -> None:
 
     with pytest.raises(SQLAlchemyError, match="commit failed"):
         await service.ask(
+            owner_id="user-1",
             session_id="session-1",
             message="Current question",
         )
@@ -176,6 +181,7 @@ async def test_get_history_delegates_to_repository() -> None:
     service, repository, _, _ = create_service(session)
 
     history = await service.get_history(
+        owner_id="user-1",
         session_id="session-1",
         limit=25,
     )

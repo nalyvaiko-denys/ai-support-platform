@@ -16,12 +16,16 @@ class ConversationRepository:
 
     async def get_last_messages(
         self,
+        owner_id: str,
         session_id: str,
         limit: int = 10,
     ) -> list[Conversation]:
         result = await self.db.execute(
             select(Conversation)
-            .where(Conversation.session_id == session_id)
+            .where(
+                Conversation.owner_id == owner_id,
+                Conversation.session_id == session_id,
+            )
             .order_by(Conversation.created_at.desc())
             .limit(limit)
         )

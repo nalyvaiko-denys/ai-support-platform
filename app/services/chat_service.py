@@ -34,10 +34,12 @@ class ChatService:
 
     async def ask(
         self,
+        owner_id: str,
         session_id: str,
         message: str,
     ) -> str:
         history = await self.repository.get_last_messages(
+            owner_id,
             session_id,
         )
 
@@ -65,6 +67,7 @@ class ChatService:
         result = await self.client.generate(messages)
 
         conversation = Conversation(
+            owner_id=owner_id,
             session_id=session_id,
             user_message=message,
             ai_response=result.text,
@@ -87,11 +90,13 @@ class ChatService:
 
     async def get_history(
         self,
+        owner_id: str,
         session_id: str,
         *,
         limit: int = 50,
     ) -> list[Conversation]:
         return await self.repository.get_last_messages(
+            owner_id=owner_id,
             session_id=session_id,
             limit=limit,
         )

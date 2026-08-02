@@ -83,15 +83,17 @@ persistence.
 
 ### Request flow
 
-1. The client sends a message to the FastAPI endpoint.
-2. Pydantic validates the session identifier and request body.
-3. `ChatService` loads recent conversation history from PostgreSQL.
-4. `EmbeddingService` creates an embedding for the user query.
-5. `DocumentRepository` searches PostgreSQL and pgvector for relevant chunks.
-6. `PromptBuilder` combines the message, history, and retrieved context.
-7. The configured LLM provider generates a response.
-8. The conversation and model metadata are stored in PostgreSQL.
-9. FastAPI returns the response to the client.
+1. The client sends a message with a Bearer JWT to the FastAPI endpoint.
+2. The API verifies the token signature, issuer, audience, expiration, and `sub`.
+3. Redis enforces the chat rate limit for the authenticated subject.
+4. Pydantic validates the session identifier and request body.
+5. `ChatService` loads the user's recent history from PostgreSQL.
+6. `EmbeddingService` creates an embedding for the user query.
+7. `DocumentRepository` searches PostgreSQL and pgvector for relevant chunks.
+8. `PromptBuilder` combines the message, history, and retrieved context.
+9. The configured LLM provider generates a response.
+10. The conversation, owner, and model metadata are stored in PostgreSQL.
+11. FastAPI returns the response to the client.
 
 ---
 
@@ -99,7 +101,9 @@ persistence.
 
 - Asynchronous REST API built with FastAPI
 - Strict request validation with Pydantic
-- Conversation history stored in PostgreSQL
+- Bearer JWT authentication with HS256 and OIDC-compatible JWKS verification
+- User-scoped conversation history stored in PostgreSQL
+- Redis-backed rate limiting for chat requests
 - Knowledge-base ingestion from Markdown
 - Safe text chunking with configurable overlap
 - Embedding generation through a provider abstraction
@@ -109,7 +113,7 @@ persistence.
 - OpenAI and deterministic mock providers
 - Idempotent knowledge-base ingestion
 - Alembic database migrations
-- Separate liveness and database readiness checks
+- Separate liveness and dependency readiness checks
 - Docker Compose orchestration and hardened application containers
 - Global handling of upstream OpenAI errors
 - Ruff static analysis
@@ -134,6 +138,8 @@ persistence.
 | Embeddings | OpenAI | text-embedding-3-small |
 | OpenAI SDK | `openai` | 2.48.0 |
 | PostgreSQL driver | asyncpg | 0.31.0 |
+| Authentication | PyJWT | 2.13.0 |
+| Rate limiting | Redis and redis-py | Redis 8.8 / redis-py 8.1 |
 | Dependency management | uv | 0.11.32 with `uv.lock` |
 | Containers | Docker | Docker Compose |
 | Testing | pytest | pytest, pytest-asyncio, pytest-cov |
@@ -147,6 +153,15 @@ persistence.
 ### Requirements
 
 Only Docker and Docker Compose are required for the default mock mode.
+
+Create the local environment file before the first start:
+
+```bash
+cp .env.example .env
+```
+
+The included JWT secret is for local development only. Replace it before using
+the configuration outside a local machine.
 
 ### Start the platform
 
@@ -165,11 +180,22 @@ Expected state:
 ```text
 api       Up (healthy)
 db        Up (healthy)
+redis     Up (healthy)
 migrate   Exited (0)
 ```
 
 The migration container is expected to exit with code `0` after applying all
 pending Alembic migrations.
+
+Create a short-lived local access token:
+
+```bash
+SUPPORT_TOKEN="$(
+  docker compose run --rm --no-deps api \
+    python -m scripts.create_dev_token \
+    --subject demo-user
+)"
+```
 
 ### API documentation
 
@@ -246,6 +272,36 @@ API credentials.
 
 ---
 
+## Authentication and rate limiting
+
+Chat and history endpoints require a Bearer JWT. The validated `sub` claim owns
+the conversation history, so two users can safely use the same client-generated
+session identifier without accessing each other's messages.
+
+Local development uses HS256. Production deployments can verify tokens issued
+by an OpenID Connect provider through its JWKS endpoint:
+
+```env
+AUTH_MODE=jwt
+JWT_ALGORITHM=RS256
+JWT_SECRET=
+JWT_JWKS_URL=https://identity.example/.well-known/jwks.json
+JWT_ISSUER=https://identity.example/
+JWT_AUDIENCE=ai-support-api
+```
+
+The chat endpoint uses a Redis-backed fixed-window rate limit. Redis keys contain
+a hash of the JWT subject instead of the original identifier. The API returns
+`429` with `Retry-After` when the limit is exceeded and fails closed with `503`
+when Redis is unavailable.
+
+```env
+RATE_LIMIT_REQUESTS=10
+RATE_LIMIT_WINDOW_SECONDS=60
+```
+
+---
+
 ## Knowledge-base ingestion
 
 Run ingestion inside Docker:
@@ -291,8 +347,8 @@ This endpoint reports whether the API process is running.
 GET /api/ready
 ```
 
-This endpoint verifies that the API can reach PostgreSQL. Docker uses it as the
-application container health check.
+This endpoint verifies that the API can reach PostgreSQL and Redis. Docker uses
+it as the application container health check.
 
 ### Database connectivity check
 
@@ -305,6 +361,7 @@ GET /api/db
 ```http
 POST /api/{session_id}
 Content-Type: application/json
+Authorization: Bearer <token>
 ```
 
 Request:
@@ -322,6 +379,7 @@ curl \
   --request POST \
   --url http://localhost:8000/api/demo-session \
   --header "Content-Type: application/json" \
+  --header "Authorization: Bearer $SUPPORT_TOKEN" \
   --data '{"message":"How can I change my card PIN?"}'
 ```
 
@@ -329,6 +387,7 @@ curl \
 
 ```http
 GET /api/{session_id}/history
+Authorization: Bearer <token>
 ```
 
 Session identifiers:
@@ -381,8 +440,8 @@ Run the API without Docker:
 uv run --locked uvicorn app.main:app --reload
 ```
 
-A reachable PostgreSQL database and a valid `DATABASE_URL` are required for
-local non-Docker execution.
+Reachable PostgreSQL and Redis instances, valid connection URLs, and JWT
+configuration are required for local non-Docker execution.
 
 ---
 
@@ -395,7 +454,7 @@ local non-Docker execution.
 ├── app
 │   ├── api                # FastAPI routes
 │   ├── core               # Settings and exception handlers
-│   ├── db                 # SQLAlchemy engine and sessions
+│   ├── db                 # PostgreSQL and Redis clients
 │   ├── dependencies       # Dependency injection
 │   ├── llm                # Providers, prompts, and chunker
 │   ├── models             # SQLAlchemy models
@@ -407,7 +466,7 @@ local non-Docker execution.
 ├── docs
 │   └── assets             # README product visuals
 ├── migrations             # Alembic migrations
-├── scripts                # Knowledge-base ingestion command
+├── scripts                # Ingestion and local JWT commands
 ├── tests                  # Unit and API tests
 ├── docker-compose.yml
 ├── LICENSE
@@ -426,8 +485,8 @@ product design concepts that demonstrate possible integrations with the API.
 The support dashboard is not implemented as a frontend application in this
 repository.
 
-Potential production extensions include authentication, authorization, rate
-limiting, observability, source citations, and a real human-escalation workflow.
+Potential production extensions include role-based operator authorization,
+observability, source citations, and a real human-escalation workflow.
 
 ---
 

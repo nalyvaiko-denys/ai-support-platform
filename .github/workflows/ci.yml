@@ -65,6 +65,15 @@ jobs:
     name: Docker smoke test
     runs-on: ubuntu-latest
 
+    env:
+      AUTH_MODE: jwt
+      JWT_ALGORITHM: HS256
+      JWT_SECRET: ci-secret-that-is-long-enough-for-hs256
+      JWT_ISSUER: ai-support-platform
+      JWT_AUDIENCE: ai-support-api
+      RATE_LIMIT_REQUESTS: 2
+      RATE_LIMIT_WINDOW_SECONDS: 3600
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -122,6 +131,13 @@ jobs:
 
       - name: Run chat flow
         run: |
+          token="$(
+            docker compose run --rm --no-deps api \
+              python -m scripts.create_dev_token \
+              --subject smoke-user \
+              --minutes 5
+          )"
+
           curl \
             --fail \
             --silent \
@@ -129,17 +145,62 @@ jobs:
             --request POST \
             --url http://localhost:8000/api/smoke-session \
             --header "Content-Type: application/json" \
+            --header "Authorization: Bearer $token" \
             --data '{"message":"How can I change my card PIN?"}' |
             python -c 'import json, sys; payload = json.load(sys.stdin); assert payload["session_id"] == "smoke-session"; assert payload["reply"].startswith("Mock provider is active.")'
 
       - name: Verify persisted conversation
         run: |
+          token="$(
+            docker compose run --rm --no-deps api \
+              python -m scripts.create_dev_token \
+              --subject smoke-user \
+              --minutes 5
+          )"
+
           curl \
             --fail \
             --silent \
             --show-error \
+            --header "Authorization: Bearer $token" \
             http://localhost:8000/api/smoke-session/history |
             python -c 'import json, sys; payload = json.load(sys.stdin); assert len(payload["messages"]) == 1; assert payload["messages"][0]["user_message"] == "How can I change my card PIN?"'
+
+      - name: Verify chat rate limit
+        run: |
+          token="$(
+            docker compose run --rm --no-deps api \
+              python -m scripts.create_dev_token \
+              --subject smoke-user \
+              --minutes 5
+          )"
+
+          second_status="$(
+            curl \
+              --silent \
+              --output /dev/null \
+              --write-out "%{http_code}" \
+              --request POST \
+              --url http://localhost:8000/api/smoke-session \
+              --header "Content-Type: application/json" \
+              --header "Authorization: Bearer $token" \
+              --data '{"message":"Second request"}'
+          )"
+
+          limited_status="$(
+            curl \
+              --silent \
+              --output /dev/null \
+              --write-out "%{http_code}" \
+              --request POST \
+              --url http://localhost:8000/api/smoke-session \
+              --header "Content-Type: application/json" \
+              --header "Authorization: Bearer $token" \
+              --data '{"message":"Rate-limited request"}'
+          )"
+
+          test "$second_status" = "200"
+          test "$limited_status" = "429"
 
       - name: Show Docker logs
         if: always()
@@ -147,7 +208,7 @@ jobs:
           docker compose logs \
             --no-color \
             --tail=200 \
-            db migrate api
+            db redis migrate api
 
       - name: Stop services
         if: always()

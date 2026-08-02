@@ -2,6 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path
 
+from app.core.auth import CurrentUser
+from app.dependencies.rate_limit import ChatRateLimit
 from app.dependencies.services import ChatServiceDep
 from app.schemas.chat import (
     ChatRequest,
@@ -30,9 +32,12 @@ SessionId = Annotated[
 async def send_message(
     session_id: SessionId,
     request: ChatRequest,
+    current_user: CurrentUser,
+    _rate_limit: ChatRateLimit,
     chat_service: ChatServiceDep,
 ) -> ChatResponse:
     reply = await chat_service.ask(
+        owner_id=current_user.subject,
         session_id=session_id,
         message=request.message,
     )
@@ -50,9 +55,11 @@ async def send_message(
 )
 async def get_history(
     session_id: SessionId,
+    current_user: CurrentUser,
     chat_service: ChatServiceDep,
 ) -> HistoryResponse:
     history_records = await chat_service.get_history(
+        owner_id=current_user.subject,
         session_id=session_id,
         limit=50,
     )

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.router import router as api_router
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
+from app.db.redis import redis_client
 from app.db.session import engine
 
 
@@ -16,6 +17,7 @@ async def lifespan(
 ) -> AsyncIterator[None]:
     yield
     await engine.dispose()
+    await redis_client.aclose()
 
 
 def create_app() -> FastAPI:

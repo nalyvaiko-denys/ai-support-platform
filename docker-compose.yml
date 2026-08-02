@@ -13,6 +13,16 @@ x-app: &app
     OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
     RETRIEVAL_MIN_SIMILARITY: ${RETRIEVAL_MIN_SIMILARITY:-0.25}
     RETRIEVAL_LIMIT: ${RETRIEVAL_LIMIT:-3}
+    AUTH_MODE: ${AUTH_MODE:-jwt}
+    JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+    JWT_SECRET: ${JWT_SECRET:-}
+    JWT_JWKS_URL: ${JWT_JWKS_URL:-}
+    JWT_ISSUER: ${JWT_ISSUER:-ai-support-platform}
+    JWT_AUDIENCE: ${JWT_AUDIENCE:-ai-support-api}
+    JWT_LEEWAY_SECONDS: ${JWT_LEEWAY_SECONDS:-10}
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-10}
+    RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
     DEBUG: ${DEBUG:-false}
     CORS_ORIGINS: ${CORS_ORIGINS:-[]}
 
@@ -55,6 +65,43 @@ services:
 
     restart: unless-stopped
 
+  redis:
+    image: redis:8.8.1-alpine@sha256:8096655e437712b07503796fb64d81359256cfcff0ab29d95a7da72863786efb
+
+    command:
+      [
+        "redis-server",
+        "--save",
+        "",
+        "--appendonly",
+        "no"
+      ]
+
+    read_only: true
+    tmpfs:
+      - /data:rw,noexec,nosuid,size=64m
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    pids_limit: 128
+    restart: unless-stopped
+
   migrate:
     <<: *app
 
@@ -75,10 +122,13 @@ services:
     <<: *app
 
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
     depends_on:
       db:
+        condition: service_healthy
+
+      redis:
         condition: service_healthy
 
       migrate:
